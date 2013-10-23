@@ -80,6 +80,9 @@ our $syslog_options  = "pid";
 our $syslog_priority = "info";
 our $syslog_ident    = "postfix/$NAME";
 
+# Whitelist - for example: googlemail
+our $WHITELIST = qr/209\.85\.\d+\.\d+/;
+
 # Subs
 sub log_debug($);
 sub log_verbose($);
@@ -221,10 +224,19 @@ sub handle_connection($) {
    
       # Missuse detected, block login
       if($ips >= $DIFFERNT_IPS) {
-         log_info("Reject user $username from ip $ip - got logins from "
-          . "$ips different IPs in the last time period");
 
-         $answer = $POSTFIX_SASL_LIMIT_MESSAGE;
+         # Check whitelist
+	 my $on_whitelist = 0;
+	    if($ip =~ $WHITELIST) {
+	       $on_whitelist = 1;
+	 }
+
+	 if(! $on_whitelist) {
+            log_info("Reject user $username from ip $ip - got logins from "
+             . "$ips different IPs in the last time period");
+
+            $answer = $POSTFIX_SASL_LIMIT_MESSAGE;
+	 }
       }
    }
 
