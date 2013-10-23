@@ -185,7 +185,7 @@ sub handle_connection($) {
 
    $SIG{ALRM} = sub { log_info("Connection timed out"); exit() };
 
-   # Timeout: 60 seconds for handle the connection
+   # Timeout: 60 seconds to handle the connection
    alarm 60;
 
    # data
