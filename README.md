@@ -17,7 +17,6 @@ Installation
 
 If you are using Debian or Ubuntu you can type:
 
-   cd debian
    make install
 
 
