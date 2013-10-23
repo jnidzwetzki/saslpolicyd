@@ -20,8 +20,8 @@ If you are using Debian or Ubuntu you can build your own dpkg-package by using t
 * Add the policy service to your postfix configuration (/etc/postfix/main.cf):
 
 ```
-  smtpd\_recipient\_restrictions = permit\_mynetworks,
-  check\_policy\_service inet:127.0.0.1:25025,
+  smtpd_recipient_restrictions = permit_mynetworks,
+  check_policy_service inet:127.0.0.1:25025,
   ...
 ```
 
