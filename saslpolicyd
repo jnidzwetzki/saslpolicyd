@@ -42,14 +42,10 @@ case "$1" in
 		fi
 		;;
 
-	restart|force-reload)
-		stop
+	restart|force-reload|reload)
+		$0 stop
 		sleep 5
-		start
-		;;
-
-	reload)
-		restart
+		$0 start
 		;;
 
 	status)
