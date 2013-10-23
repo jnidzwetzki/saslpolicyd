@@ -111,6 +111,8 @@ $SIG{'QUIT'} = sub {
    exit 0;
 };
 
+$SIG{CHLD} = "IGNORE";
+
 # daemonize
 if(! $FOREGROUND) {
    
@@ -161,7 +163,15 @@ $socket->autoflush(1);
 # Accept connections, start a new thread for every connection
 while(1) {
    my $client_socket = $socket -> accept();
-   async(\&handle_connection, $client_socket) -> detach; 
+
+   defined(my $pid = fork()) or die "Can't fork: $!";
+   
+   # Parent process
+   if(! $pid) {
+       handle_connection($client_socket);
+       exit();
+   }
+
 }
 
 ###
@@ -172,6 +182,11 @@ sub handle_connection($) {
    my $answer = $POSTFIX_OK;
 
    log_debug("Handle new connection");
+
+   $SIG{ALRM} = sub { log_info("Connection timed out"); exit() };
+
+   # Timeout: 60 seconds for handle the connection
+   alarm 60;
 
    # data
    my $ip = "";
@@ -219,6 +234,8 @@ sub handle_connection($) {
    $client_socket -> close();
    
    log_debug("Connection closed");
+
+   exit;
 }
 
 
