@@ -1,0 +1,15 @@
+Source: saslpolicyd
+Section: mail
+Priority: extra
+Maintainer: Jan Kristof Nidzwetzki <jnidzwetzki@gmx.de>
+Build-Depends: debhelper (>= 8.0.0)
+Standards-Version: 3.9.3
+Homepage: https://github.com/jnidzwetzki/saslpolicyd
+#Vcs-Git: git://git.debian.org/collab-maint/saslpolicyd.git
+#Vcs-Browser: http://git.debian.org/?p=collab-maint/saslpolicyd.git;a=summary
+
+Package: saslpolicyd
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}, libdbix-connector-perl, libdbd-sqlite3-perl
+Description: SASL policy daemon for postfix
+ saslpolicyd is a policy daemon for postfix. The software is written in perl and licensed under the Apache License.
