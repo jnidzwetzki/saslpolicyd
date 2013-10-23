@@ -111,12 +111,6 @@ $SIG{'QUIT'} = sub {
    exit 0;
 };
 
-# Init database
-if(! sqlite_table_exists($conn, "LOGIN")) {
-   log_info("Create new Database structure");
-   create_tables($conn);
-}
-
 # daemonize
 if(! $FOREGROUND) {
    
@@ -150,7 +144,11 @@ if(! $FOREGROUND) {
    close(PIF);
 }
 
-# Write pid file
+# Init database
+if(! sqlite_table_exists($conn, "LOGIN")) {
+   log_info("Create new Database structure");
+   create_tables($conn);
+}
 
 my $socket = IO::Socket::INET->new(    
               Proto  => 'tcp',
@@ -173,7 +171,7 @@ sub handle_connection($) {
    my $client_socket = shift;
    my $answer = $POSTFIX_OK;
 
-   log_verbose("Handle new connection");
+   log_debug("Handle new connection");
 
    # data
    my $ip = "";
