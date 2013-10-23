@@ -235,7 +235,7 @@ sub handle_connection($) {
    
    log_debug("Connection closed");
 
-   exit;
+   exit();
 }
 
 
