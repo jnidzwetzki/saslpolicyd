@@ -15,9 +15,7 @@ Installation
 * Install the policy daemon
 * Start the service
 
-If you are using Debian or Ubuntu you can type:
-
-   make install
+If you are using Debian or Ubuntu you can build your own dpkg-package by using the content of the debian/ folder.
 
 
 * Add the policy service to your postfix configuration:
