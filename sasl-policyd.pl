@@ -175,7 +175,7 @@ if(! $FOREGROUND) {
    $> = $uid;
    $) = $gid;
    
-   writelog("New daemon started");
+   log_debug("New daemon process started");
 
    # Write pid
    print PIF $$;
