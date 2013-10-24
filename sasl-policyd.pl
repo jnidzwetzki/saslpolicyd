@@ -64,14 +64,17 @@ our $POSTFIX_OK = "action=dunno\n\n";
 our $USER = "postfix";
 our $GROUP = "postfix";
 
-# Database cleanup
-our $CLEANUP_PERIOD = 2 * 24 * 60 * 60; # 2d
-
 # IPs per time period
 our $DIFFERNT_IPS = 10;
 
+# Logins per time period
+our $TOTAL_LOGINS = 100;
+
 # Time period for calculation
 our $TIME_PERIOD = 60 * 60; # 1h
+
+# Database cleanup
+our $CLEANUP_PERIOD = 2 * 24 * 60 * 60; # 2d
 
 # Logging 
 our $syslog_socktype = 'unix';
@@ -91,8 +94,10 @@ sub writelog($);
 sub handle_connection($);
 sub sqlite_table_exists($$);
 sub create_tables($);
+sub database_clanup($);
 sub insert_login($$$);
 sub get_ips_for_login($$$);
+sub get_logins($$$);
 
 # Open Databse
 my $conn = DBIx::Connector -> new("dbi:SQLite:dbname=$DATABASE", "", "");
@@ -186,7 +191,10 @@ sub handle_connection($) {
 
    log_debug("Handle new connection");
 
-   $SIG{ALRM} = sub { log_info("Connection timed out"); exit() };
+   $SIG{ALRM} = sub { 
+      log_info("Connection timed out"); 
+      exit() 
+   };
 
    # Timeout: 60 seconds to handle the connection
    alarm 60;
@@ -220,23 +228,32 @@ sub handle_connection($) {
       # Insert login into database
       insert_login($conn, $username, $ip);
 
-      my $ips = get_ips_for_login($conn, $username, $TIME_PERIOD);
+      # Check whitelist
+      my $on_whitelist = 0;
+      if($ip =~ $WHITELIST) {
+         $on_whitelist = 1;
+      }
+
+      if(! $on_whitelist) {
+         my $ips = get_ips_for_login($conn, $username, $TIME_PERIOD);
    
-      # Missuse detected, block login
-      if($ips >= $DIFFERNT_IPS) {
-
-         # Check whitelist
-	 my $on_whitelist = 0;
-	    if($ip =~ $WHITELIST) {
-	       $on_whitelist = 1;
-	 }
-
-	 if(! $on_whitelist) {
+         # Missuse detected, block login
+         if($ips > $DIFFERNT_IPS) {
             log_info("Reject user $username from ip $ip - got logins from "
              . "$ips different IPs in the last time period");
 
             $answer = $POSTFIX_SASL_LIMIT_MESSAGE;
-	 }
+         }
+
+         my $logins = get_logins($conn, $username, $TIME_PERIOD);
+
+         # Number of logins reached
+         if($logins > $TOTAL_LOGINS) {
+            log_info("Reject user $username - got $logins logins "
+             . "in the last time period");
+
+            $answer = $POSTFIX_SASL_LIMIT_MESSAGE;
+         }
       }
    }
 
@@ -246,6 +263,9 @@ sub handle_connection($) {
    $client_socket -> close();
    
    log_debug("Connection closed");
+
+   # Do some database cleanup
+   database_clanup($conn);
 
    exit();
 }
@@ -333,16 +353,53 @@ sub get_ips_for_login($$$) {
    unless($ips) {
       $ips = 0;
    }
-   
-
-   # Do some database cleanup
-   $timestamp = time() - $CLEANUP_PERIOD;
-   $sth = $dbh->prepare(
-      "DELETE from LOGIN where logintime < ?");
-   $sth -> execute($timestamp);
-   $sth -> finish();
 
    return $ips;
+}
+
+###
+# Do sime Database cleanup
+###
+sub database_clanup($) {
+   my $conn = shift;
+   my $dbh = $conn -> dbh;
+
+   # Do some database cleanup
+   my $timestamp = time() - $CLEANUP_PERIOD;
+
+   my $sth = $dbh->prepare(
+      "DELETE from LOGIN where logintime < ?");
+
+   $sth -> execute($timestamp);
+   $sth -> finish();
+}
+
+###
+# Calculate the total number of logins for a given timeperiod
+###
+sub get_logins($$$) {
+   my $conn = shift;
+   my $username = shift;
+   my $time_period = shift;
+
+   my $dbh = $conn -> dbh;
+
+   my $timestamp = time() - $time_period;
+
+   my $sth = $dbh -> prepare
+      ("SELECT count(*) from LOGIN where username = ? "
+      . "and logintime > ?");
+
+   $sth -> execute($username, $timestamp);
+   my $row = $sth->fetchrow_arrayref();
+   my $logins = $row->[0];
+   $sth -> finish();
+   
+   unless($logins) {
+      $logins = 0;
+   }
+
+   return $logins;
 }
 
 ###
