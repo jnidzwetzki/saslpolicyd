@@ -33,7 +33,7 @@ If you are using Debian or Ubuntu you can build your own dpkg-package by using t
   ...
 ```
 
-Configurtion file
+Configuration file
 -----------------
 If you need to configure special rate limits per user, you can define them in the configuration file (/etc/saslpolicyd.conf):
 
