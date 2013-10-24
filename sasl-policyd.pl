@@ -84,7 +84,13 @@ our $syslog_priority = "info";
 our $syslog_ident    = "postfix/$NAME";
 
 # Whitelist - for example: googlemail
-our $WHITELIST = qr/209\.85\.\d+\.\d+/;
+our $IP_WHITELIST = qr/209\.85\.\d+\.\d+/;
+
+# Configuration file
+our $CONFIGURATION = "/etc/saslpolicyd.conf";
+
+# Special user rate limit, read from configuration file
+our %USER_RATE_LIMIT = ();
 
 # Subs
 sub log_debug($);
@@ -105,6 +111,28 @@ my $conn = DBIx::Connector -> new("dbi:SQLite:dbname=$DATABASE", "", "");
 # Open Logfiles
 setlogsock($syslog_socktype);
 openlog($syslog_ident, $syslog_options, $syslog_facility);
+
+# Read configuration
+if(-f $CONFIGURATION) {
+   log_info("Read configuration from $CONFIGURATION");
+
+   open(CONF, "<$CONFIGURATION");
+   my @configuration_data = <CONF>;
+   close(CONF);
+
+   for(@configuration_data) {
+      
+      # Special rate configuration
+      if($_ =~ /userlimit:\s+(.*)\s+(\d+)/) {
+          my $conf_user = $1;
+          my $conf_rate = $2;
+
+          log_debug("Set rate limit for user $conf_user to $conf_rate");
+
+          $USER_RATE_LIMIT{ $conf_user } = $conf_rate;
+      }
+   }
+}
 
 log_info("$NAME started");
 
@@ -230,7 +258,7 @@ sub handle_connection($) {
 
       # Check whitelist
       my $on_whitelist = 0;
-      if($ip =~ $WHITELIST) {
+      if($ip =~ $IP_WHITELIST) {
          $on_whitelist = 1;
       }
 
@@ -247,8 +275,15 @@ sub handle_connection($) {
 
          my $logins = get_logins($conn, $username, $TIME_PERIOD);
 
+         # Special configuration for user, or global rate limit?
+         my $number_of_logins = $TOTAL_LOGINS;
+
+         if($USER_RATE_LIMIT{$username}) {
+            $number_of_logins = $USER_RATE_LIMIT{$username};
+         }
+
          # Number of logins reached
-         if($logins > $TOTAL_LOGINS) {
+         if($logins > $number_of_logins) {
             log_info("Reject user $username - got $logins logins "
              . "in the last time period");
 
