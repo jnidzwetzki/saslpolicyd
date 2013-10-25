@@ -119,7 +119,6 @@ my $conn = DBIx::Connector -> new("dbi:SQLite:dbname=$DATABASE", "", "");
 setlogsock($syslog_socktype);
 openlog($syslog_ident, $syslog_options, $syslog_facility);
 
-
 # Check for old runing instance
 if(-f $PIDFILE) {
    open(PIF, "<$PIDFILE");
@@ -135,7 +134,6 @@ if(-f $PIDFILE) {
        exit(-1);
    }
 }
-
 
 # Read configuration
 if(-f $CONFIGURATION) {
@@ -235,7 +233,6 @@ while(1) {
        handle_connection($client_socket);
        exit();
    }
-
 }
 
 ###
