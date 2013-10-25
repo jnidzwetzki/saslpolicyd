@@ -76,6 +76,9 @@ our $TIME_PERIOD = 60 * 60; # 1h
 # Database cleanup
 our $CLEANUP_PERIOD = 2 * 24 * 60 * 60; # 2d
 
+# Pid file
+our $PIDFILE = "/var/run/sasl-policyd.pid";
+
 # Logging 
 our $syslog_socktype = 'unix';
 our $syslog_facility = "mail";
@@ -115,6 +118,24 @@ my $conn = DBIx::Connector -> new("dbi:SQLite:dbname=$DATABASE", "", "");
 # Open Logfiles
 setlogsock($syslog_socktype);
 openlog($syslog_ident, $syslog_options, $syslog_facility);
+
+
+# Check for old runing instance
+if(-f $PIDFILE) {
+   open(PIF, "<$PIDFILE");
+   my $old_pid = <PIF>;
+   chomp($old_pid);
+   close(PIF);
+
+   log_debug("Old process id is $old_pid");
+
+   # Is old process running?
+   if(kill 0, $old_pid) {
+       log_info("Old instance with pid $old_pid detected, exiting");
+       exit(-1);
+   }
+}
+
 
 # Read configuration
 if(-f $CONFIGURATION) {
@@ -173,7 +194,7 @@ if(! $FOREGROUND) {
    setsid();
 
    # Open pidfile
-   open(PIF, ">/var/run/sasl-policyd.pid") or die $!;
+   open(PIF, ">$PIDFILE") or die $!;
 
    # Drop priviliges
    my $uid = getpwnam($USER)  or die "User $USER doesn't exist!";
