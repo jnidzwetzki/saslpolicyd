@@ -20,7 +20,7 @@ Installation
 -------------
 * Download and unpack the software
 * Copy the policy daemon to /usr/sbin
-* Copy the configuration to /etc
+* Copy the configuration file to /etc
 * Start the service
 
 If you are using Debian or Ubuntu you can build your own dpkg-package by using the content of the debian/ folder.
