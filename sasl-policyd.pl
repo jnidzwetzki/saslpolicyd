@@ -92,6 +92,9 @@ our $CONFIGURATION = "/etc/saslpolicyd.conf";
 # Special user rate limit, read from configuration file
 our %USER_RATE_LIMIT = ();
 
+# Special user ip rate limit, read from configuration file
+our %USER_IP_LIMIT = ();
+
 # Subs
 sub log_debug($);
 sub log_verbose($);
@@ -104,6 +107,7 @@ sub database_clanup($);
 sub insert_login($$$);
 sub get_ips_for_login($$$);
 sub get_logins($$$);
+sub check_for_abuse($$$);
 
 # Open Databse
 my $conn = DBIx::Connector -> new("dbi:SQLite:dbname=$DATABASE", "", "");
@@ -123,13 +127,16 @@ if(-f $CONFIGURATION) {
    for(@configuration_data) {
       
       # Special rate configuration
-      if($_ =~ /userlimit:\s+(.*)\s+(\d+)/) {
+      if($_ =~ /^userlimit:\s+(.*)\s+(\d+)\s+(\d+)/) {
           my $conf_user = $1;
-          my $conf_rate = $2;
+          my $conf_login_rate = $2;
+          my $conf_ip_rate = $3;
 
-          log_debug("Set rate limit for user $conf_user to $conf_rate");
-
-          $USER_RATE_LIMIT{ $conf_user } = $conf_rate;
+          log_debug("Set login limit for user $conf_user to " 
+             . "(Logins: $conf_login_rate / IPs: $conf_ip_rate)");
+          
+          $USER_RATE_LIMIT{ $conf_user } = $conf_login_rate;
+          $USER_IP_LIMIT{ $conf_user } = $conf_ip_rate;
       }
    }
 }
@@ -211,12 +218,63 @@ while(1) {
 }
 
 ###
+# Check ip and username for abuse
+###
+sub check_for_abuse($$$) {
+   my $conn = shift;   
+   my $username = shift;
+
+   my $ip = shift;
+   
+   my $dbh = $conn -> dbh;
+
+   # Check whitelist
+   my $on_whitelist = 0;
+   if($ip =~ $IP_WHITELIST) {
+      return $POSTFIX_OK;
+   }
+
+   my $ips = get_ips_for_login($conn, $username, $TIME_PERIOD);
+
+   # Check for abuse
+   my $number_of_ips = $DIFFERNT_IPS;
+
+   if(defined $USER_IP_LIMIT{$username}) {
+      $number_of_ips = $USER_IP_LIMIT{$username};
+   }
+
+   if($ips > $number_of_ips) {
+      log_info("Reject user $username from ip $ip - got logins from "
+       . "$ips different IPs in the last time period");
+
+      return $POSTFIX_SASL_LIMIT_MESSAGE;
+   }
+
+   my $logins = get_logins($conn, $username, $TIME_PERIOD);
+
+   # Special configuration for user, or global rate limit?
+   my $number_of_logins = $TOTAL_LOGINS;
+
+   if(defined $USER_RATE_LIMIT{$username}) {
+      $number_of_logins = $USER_RATE_LIMIT{$username};
+   }
+
+   # Number of logins reached
+   if($logins > $number_of_logins) {
+     log_info("Reject user $username - got $logins logins "
+        . "in the last time period");
+      return $POSTFIX_SASL_LIMIT_MESSAGE;
+   }
+   
+   return $POSTFIX_OK;
+}
+
+###
 # Handle connections
 ###
 sub handle_connection($) {
    my $client_socket = shift;
-   my $answer = $POSTFIX_OK;
-
+   
    log_debug("Handle new connection");
 
    $SIG{ALRM} = sub { 
@@ -250,46 +308,16 @@ sub handle_connection($) {
        }
    }
 
+   my $answer = $POSTFIX_OK;
+
    # SASL Username and IP known?
    if($ip && $username) {
 
+      # Check for abuse
+      $answer = check_for_abuse($conn, $username, $ip);
+ 
       # Insert login into database
       insert_login($conn, $username, $ip);
-
-      # Check whitelist
-      my $on_whitelist = 0;
-      if($ip =~ $IP_WHITELIST) {
-         $on_whitelist = 1;
-      }
-
-      if(! $on_whitelist) {
-         my $ips = get_ips_for_login($conn, $username, $TIME_PERIOD);
-   
-         # Missuse detected, block login
-         if($ips > $DIFFERNT_IPS) {
-            log_info("Reject user $username from ip $ip - got logins from "
-             . "$ips different IPs in the last time period");
-
-            $answer = $POSTFIX_SASL_LIMIT_MESSAGE;
-         }
-
-         my $logins = get_logins($conn, $username, $TIME_PERIOD);
-
-         # Special configuration for user, or global rate limit?
-         my $number_of_logins = $TOTAL_LOGINS;
-
-         if($USER_RATE_LIMIT{$username}) {
-            $number_of_logins = $USER_RATE_LIMIT{$username};
-         }
-
-         # Number of logins reached
-         if($logins > $number_of_logins) {
-            log_info("Reject user $username - got $logins logins "
-             . "in the last time period");
-
-            $answer = $POSTFIX_SASL_LIMIT_MESSAGE;
-         }
-      }
    }
 
    log_debug("Send $answer to postfix");

@@ -39,7 +39,7 @@ If you need to configure special rate limits per user, you can define them in th
 
 
 ```
-# Set a rate limit of 1000 mails for sasl-user "web100"
-userlimit: web100 1000
+# Set a rate limit of 1000 mails from 20 differnt IPs for sasl-user "web100"
+userlimit: web100 1000 20
 ```
 
