@@ -3,9 +3,9 @@ saslpolicyd
 
 saslpolicyd is a policy daemon for postfix. The software is written in perl and licensed under the Apache License 2.0.
 
-As a service provider you have to deal with stolen passwords. Such accounts are often used for abusive actions. Nowadays, botnets are using the stolen passwords for relaying huge amounts of spam mails over your systems. Your infrastructure will slow down and many blacklists will list your IPs as a known source of spam. 
+As a service provider, you have to deal with stolen passwords. Such accounts are often used for abusive actions. Nowadays, botnets are using stolen passwords for sending huge amounts of spam mails over a smarthost. In this case, your mailservers have to relay thousands of spam mails. All mails are received by authenticated SMTP-Connections. 
 
-Often this missuse follows the same pattern: normally a customer relays only a handful of mails during a week. The mails are delivered from a few source ips. In a missuse case, more than 1000 mails are relayed from more then 30 ips in one hour. This is the reason why I wrote this tool. saslpolicyd tracks all sasl logins and reject the relay if a missuse case is detected.
+Often, the missuse follows the same pattern: normally a customer relays only a handful of mails during a week. The mails are delivered from a few source ips. In a missuse case, more than 1000 mails are relayed from more then 30 ips in one hour. This is the reason why I wrote this tool. saslpolicyd tracks all sasl logins and reject the relay if a missuse case is detected.
 
 
 Features
