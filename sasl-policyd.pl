@@ -112,6 +112,9 @@ sub get_ips_for_login($$$);
 sub get_logins($$$);
 sub check_for_abuse($$$);
 
+# Set umask 
+umask 0077;
+
 # Open Databse
 my $conn = DBIx::Connector -> new("dbi:SQLite:dbname=$DATABASE", "", "");
 
