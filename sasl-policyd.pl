@@ -11,7 +11,7 @@
 #
 # Add the following line to your main.cf
 #
-# smtpd_recipient_restrictions = permit_mynetworks, 
+# smtpd_client_restrictions = 
 #           check_policy_service inet:127.0.0.1:25025, 
 #           ....
 # 
